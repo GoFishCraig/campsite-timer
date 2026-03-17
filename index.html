@@ -2,12 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="CampsiteTimer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#05080f">
-<title>CampsiteTimer ◈</title>
+<title>◈ CampsiteTimer</title>
 <style>
 /* ═══════════════════════════════════════════════════════════
    DESIGN TOKENS
@@ -25,665 +22,578 @@
   --dim:   #4a6080;
   --mono:  'SF Mono','Menlo','Courier New',monospace;
   --sans:  -apple-system,'Helvetica Neue',sans-serif;
-  --r:     12px;
-  --safe-top: env(safe-area-inset-top);
-  --safe-bot: env(safe-area-inset-bottom);
+  --r:     10px;
 }
 /* ═══════════════════════════════════════════════════════════
    RESET & BASE
+   No fixed height — page scrolls naturally in Split View
 ═══════════════════════════════════════════════════════════ */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);
-  overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;min-height:100vh;padding-bottom:48px}
+
 /* ═══════════════════════════════════════════════════════════
-   LAYOUT SHELL
+   HEADER  — compact for split view
 ═══════════════════════════════════════════════════════════ */
-#shell{display:flex;flex-direction:column;height:100dvh}
-/* ── Header ──────────────────────────────────────────────── */
 #header{
-  display:flex;align-items:center;justify-content:space-between;
-  background:var(--bg2);padding:12px 20px;
-  padding-top:calc(var(--safe-top) + 12px);
-  border-bottom:1px solid var(--bg4);flex-shrink:0}
-#logo{font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--acc);
-  letter-spacing:.04em}
-#liveclock{font-family:var(--mono);font-size:1.2rem;font-weight:700;color:var(--acc2);
-  letter-spacing:.02em;min-width:150px;text-align:right}
-/* ── Tab bar ─────────────────────────────────────────────── */
-#tabbar{display:flex;background:var(--bg2);border-bottom:1px solid var(--bg4);
-  flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.tab-btn{flex:1;min-width:80px;padding:12px 4px;background:none;border:none;
-  font-family:var(--mono);font-size:.75rem;font-weight:700;color:var(--dim);
-  cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;
-  white-space:nowrap}
+  position:sticky;top:0;z-index:100;
+  background:var(--bg2);
+  border-bottom:2px solid var(--acc);
+  padding:8px 12px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+#logo{font-family:var(--mono);font-size:.85rem;font-weight:700;
+  color:var(--acc);letter-spacing:.04em;white-space:nowrap}
+#liveclock{font-family:var(--mono);font-size:1rem;font-weight:700;
+  color:var(--acc2);letter-spacing:.02em;white-space:nowrap}
+
+/* ═══════════════════════════════════════════════════════════
+   GO! ALERT BANNER
+   Sticky below header — impossible to miss in split view
+═══════════════════════════════════════════════════════════ */
+#go-banner{
+  display:none;
+  position:sticky;top:41px;z-index:200;
+  background:var(--acc);color:#000;
+  font-family:var(--mono);font-size:1.8rem;font-weight:900;
+  text-align:center;padding:14px 8px;letter-spacing:.1em;
+  border-bottom:3px solid #000}
+#go-banner.active{display:block}
+@keyframes flashbanner{0%,100%{background:var(--acc)}50%{background:var(--warn)}}
+#go-banner.flashing{animation:flashbanner .28s ease infinite}
+
+/* ═══════════════════════════════════════════════════════════
+   TAB BAR  — scrollable, compact
+═══════════════════════════════════════════════════════════ */
+#tabbar{
+  position:sticky;top:41px;z-index:99;
+  display:flex;background:var(--bg2);
+  border-bottom:1px solid var(--bg4);
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none}
+#tabbar::-webkit-scrollbar{display:none}
+.tab-btn{
+  flex-shrink:0;padding:8px 10px;background:none;border:none;
+  font-family:var(--mono);font-size:.68rem;font-weight:700;color:var(--dim);
+  cursor:pointer;border-bottom:2px solid transparent;
+  transition:color .15s,border-color .15s;white-space:nowrap}
 .tab-btn.active{color:var(--acc);border-bottom-color:var(--acc)}
-/* ── Tab panels ──────────────────────────────────────────── */
-#panels{flex:1;overflow:hidden;position:relative}
-.panel{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
-  padding:16px;display:none;flex-direction:column;gap:12px}
+
+/* ═══════════════════════════════════════════════════════════
+   PANELS
+═══════════════════════════════════════════════════════════ */
+.panel{display:none;flex-direction:column;gap:10px;padding:12px}
 .panel.active{display:flex}
-/* ── Status bar ──────────────────────────────────────────── */
-#statusbar{background:var(--bg2);padding:8px 16px;
-  padding-bottom:calc(var(--safe-bot)+8px);
-  font-size:.75rem;color:var(--dim);flex-shrink:0;
-  border-top:1px solid var(--bg4);min-height:36px}
+
 /* ═══════════════════════════════════════════════════════════
-   CARDS & SECTIONS
+   STATUS BAR
 ═══════════════════════════════════════════════════════════ */
-.card{background:var(--bg3);border-radius:var(--r);padding:16px;flex-shrink:0}
-.card-title{font-size:.7rem;font-weight:700;color:var(--dim);letter-spacing:.1em;
-  text-transform:uppercase;margin-bottom:10px}
+#statusbar{
+  position:fixed;bottom:0;left:0;right:0;z-index:99;
+  background:var(--bg2);border-top:1px solid var(--bg4);
+  padding:6px 12px;font-size:.7rem;color:var(--dim);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* ═══════════════════════════════════════════════════════════
-   FORM ELEMENTS
+   CARDS
 ═══════════════════════════════════════════════════════════ */
-.field-group{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-.field-group label{font-size:.75rem;color:var(--dim)}
-.field-group input,
-.field-group select{
-  width:100%;padding:10px 12px;
-  background:var(--bg4);border:1px solid var(--bg4);border-radius:8px;
-  color:var(--text);font-family:var(--mono);font-size:.9rem;
-  -webkit-appearance:none;appearance:none;outline:none;
-  transition:border-color .2s}
-.field-group input:focus,
-.field-group select:focus{border-color:var(--acc)}
-.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card{background:var(--bg3);border-radius:var(--r);padding:12px}
+.card-title{font-size:.65rem;font-weight:700;color:var(--dim);
+  letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+
+/* ═══════════════════════════════════════════════════════════
+   SPLIT VIEW HINT
+═══════════════════════════════════════════════════════════ */
+#splitview-hint{
+  background:var(--bg4);border-left:3px solid var(--acc2);
+  padding:8px 12px;margin:12px 12px 0;border-radius:0 8px 8px 0;
+  font-size:.72rem;color:var(--dim);line-height:1.5}
+#splitview-hint strong{color:var(--acc2)}
+
+/* ═══════════════════════════════════════════════════════════
+   TIME DISPLAYS
+═══════════════════════════════════════════════════════════ */
+.time-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.time-box{background:var(--bg4);border-radius:8px;padding:10px;text-align:center}
+.time-label{font-size:.6rem;color:var(--dim);text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:4px}
+.time-val{font-family:var(--mono);font-weight:700;font-size:1.05rem;
+  color:var(--acc2);line-height:1}
+#d-countdown{
+  font-family:var(--mono);font-size:2rem;font-weight:700;
+  color:var(--acc);text-align:center;padding:10px 0;line-height:1}
+
+/* ═══════════════════════════════════════════════════════════
+   BREAKDOWN GRID
+═══════════════════════════════════════════════════════════ */
+.breakdown{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.bd-item{background:var(--bg4);border-radius:8px;padding:8px;text-align:center}
+.bd-label{font-size:.6rem;color:var(--dim);text-transform:uppercase;margin-bottom:3px}
+.bd-val{font-family:var(--mono);font-size:.95rem;font-weight:700;color:var(--text)}
+
 /* ═══════════════════════════════════════════════════════════
    BUTTONS
 ═══════════════════════════════════════════════════════════ */
-.btn{display:flex;align-items:center;justify-content:center;gap:6px;
-  width:100%;padding:13px 16px;border:none;border-radius:10px;
-  font-family:var(--mono);font-size:.85rem;font-weight:700;cursor:pointer;
-  transition:opacity .15s,transform .1s;letter-spacing:.03em}
+.btn{display:flex;align-items:center;justify-content:center;gap:5px;
+  width:100%;padding:11px 12px;border:none;border-radius:8px;
+  font-family:var(--mono);font-size:.8rem;font-weight:700;cursor:pointer;
+  transition:opacity .15s,transform .1s;letter-spacing:.02em}
 .btn:active{opacity:.8;transform:scale(.98)}
 .btn-primary{background:var(--acc);color:#000}
 .btn-warn{background:var(--warn);color:#000}
 .btn-ghost{background:var(--bg4);color:var(--text)}
 .btn-danger{background:var(--danger);color:#fff}
-.btn-row{display:flex;gap:8px}
+.btn-row{display:flex;gap:6px}
 .btn-row .btn{flex:1}
+
 /* ═══════════════════════════════════════════════════════════
-   BIG NUMBER DISPLAYS
+   LATENCY
 ═══════════════════════════════════════════════════════════ */
-.big-num{font-family:var(--mono);font-weight:700;line-height:1}
-.big-time{font-size:2.4rem;color:var(--acc2)}
-.countdown-big{font-size:3rem;color:var(--acc);text-align:center;padding:8px 0}
-.go-display{
-  text-align:center;font-family:var(--mono);font-size:5rem;font-weight:900;
-  color:var(--bg);background:var(--acc);border-radius:var(--r);
-  padding:24px;display:none;letter-spacing:.05em}
-.go-display.active{display:block}
-/* ═══════════════════════════════════════════════════════════
-   BREAKDOWN GRID
-═══════════════════════════════════════════════════════════ */
-.breakdown{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px}
-.bd-item{background:var(--bg4);border-radius:8px;padding:10px;text-align:center}
-.bd-label{font-size:.65rem;color:var(--dim);text-transform:uppercase;
-  letter-spacing:.08em;margin-bottom:4px}
-.bd-val{font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--text)}
-/* ═══════════════════════════════════════════════════════════
-   LATENCY BAR & DISPLAY
-═══════════════════════════════════════════════════════════ */
-.lat-big{font-family:var(--mono);font-size:2.8rem;font-weight:700;
+.lat-big{font-family:var(--mono);font-size:2.2rem;font-weight:700;
   color:var(--acc);text-align:center;padding:6px 0}
-.progress-track{height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;
-  margin:6px 0}
-.progress-fill{height:100%;background:var(--acc);border-radius:4px;
+.progress-track{height:6px;background:var(--bg4);border-radius:3px;
+  overflow:hidden;margin:4px 0}
+.progress-fill{height:100%;background:var(--acc);border-radius:3px;
   transition:width .3s ease;width:0%}
+
+/* ═══════════════════════════════════════════════════════════
+   FORM ELEMENTS
+═══════════════════════════════════════════════════════════ */
+.field-group{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.field-group label{font-size:.7rem;color:var(--dim)}
+.field-group input,
+.field-group select{
+  width:100%;padding:9px 10px;
+  background:var(--bg4);border:1px solid var(--bg4);border-radius:8px;
+  color:var(--text);font-family:var(--mono);font-size:.85rem;
+  -webkit-appearance:none;appearance:none;outline:none;
+  transition:border-color .2s}
+.field-group input:focus,.field-group select:focus{border-color:var(--acc)}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.profile-select-wrap{position:relative}
+.profile-select-wrap::after{content:'▾';position:absolute;right:10px;top:50%;
+  transform:translateY(-50%);color:var(--acc);pointer-events:none}
+
 /* ═══════════════════════════════════════════════════════════
    LOG TABLE
 ═══════════════════════════════════════════════════════════ */
-#log-table-wrap{overflow-x:auto;overflow-y:auto;max-height:60vh;
+.log-wrap{overflow-x:auto;overflow-y:auto;max-height:55vh;
   border-radius:8px;background:var(--bg4)}
-table{width:100%;border-collapse:collapse;font-size:.75rem;font-family:var(--mono)}
-thead th{background:var(--bg2);color:var(--acc);padding:8px 10px;
+table{width:100%;border-collapse:collapse;font-size:.7rem;font-family:var(--mono)}
+thead th{background:var(--bg2);color:var(--acc);padding:6px 8px;
   text-align:left;white-space:nowrap;position:sticky;top:0}
 tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
-tbody td{padding:7px 10px;color:var(--text);white-space:nowrap}
+tbody td{padding:5px 8px;color:var(--text);white-space:nowrap}
+
 /* ═══════════════════════════════════════════════════════════
-   COLLECTION LOG
+   COLLECTION & ANALYSIS
 ═══════════════════════════════════════════════════════════ */
-#col-log{
-  background:var(--bg4);border-radius:8px;padding:12px;
-  font-family:var(--mono);font-size:.8rem;color:var(--acc);
-  height:220px;overflow-y:auto;white-space:pre-line}
-/* ═══════════════════════════════════════════════════════════
-   ANALYSIS STATS
-═══════════════════════════════════════════════════════════ */
-.analysis-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.an-item{background:var(--bg4);border-radius:8px;padding:12px;text-align:center}
-.an-label{font-size:.65rem;color:var(--dim);text-transform:uppercase;margin-bottom:4px}
-.an-val{font-family:var(--mono);font-size:1.2rem;font-weight:700;color:var(--acc)}
-/* ═══════════════════════════════════════════════════════════
-   PROFILE SELECT PILL
-═══════════════════════════════════════════════════════════ */
-.profile-select-wrap{position:relative}
-.profile-select-wrap::after{content:'▾';position:absolute;right:12px;top:50%;
-  transform:translateY(-50%);color:var(--acc);pointer-events:none;font-size:1rem}
-/* ═══════════════════════════════════════════════════════════
-   ANIMATIONS
-═══════════════════════════════════════════════════════════ */
-@keyframes flash{0%,100%{background:var(--acc)}50%{background:#00b37c}}
-.flashing{animation:flash .3s ease infinite}
+.live-log{background:var(--bg4);border-radius:8px;padding:10px;
+  font-family:var(--mono);font-size:.75rem;color:var(--acc);
+  height:180px;overflow-y:auto;white-space:pre-line}
+.analysis-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.an-item{background:var(--bg4);border-radius:8px;padding:8px;text-align:center}
+.an-label{font-size:.6rem;color:var(--dim);text-transform:uppercase;margin-bottom:3px}
+.an-val{font-family:var(--mono);font-size:1rem;font-weight:700;color:var(--acc)}
 </style>
 </head>
 <body>
-<div id="shell">
 
-  <!-- ── HEADER ─────────────────────────────────────────── -->
+  <!-- ── STICKY HEADER ──────────────────────────────────── -->
   <div id="header">
     <div id="logo">◈ CAMPSITE TIMER</div>
     <div id="liveclock">--:--:--.---</div>
   </div>
 
+  <!-- ── GO! BANNER ─────────────────────────────────────── -->
+  <div id="go-banner">🚨  GO — BOOK NOW  🚨</div>
+
+  <!-- ── SPLIT VIEW HINT ────────────────────────────────── -->
+  <div id="splitview-hint">
+    <strong>Split View:</strong> Keep this app on one side of the screen.
+    Open the reservation site in the other half — tap Book Now the instant the alert fires.
+    <a href="#" id="dismiss-hint"
+       style="color:var(--dim);margin-left:6px;font-size:.65rem">[dismiss]</a>
+  </div>
+
   <!-- ── TAB BAR ────────────────────────────────────────── -->
   <div id="tabbar">
-    <button class="tab-btn active" data-tab="dash">◈ DASHBOARD</button>
+    <button class="tab-btn active" data-tab="dash">◈ DASH</button>
     <button class="tab-btn" data-tab="profiles">PROFILES</button>
     <button class="tab-btn" data-tab="latency">LATENCY</button>
-    <button class="tab-btn" data-tab="collect">COLLECTION</button>
+    <button class="tab-btn" data-tab="collect">COLLECT</button>
     <button class="tab-btn" data-tab="analysis">ANALYSIS</button>
     <button class="tab-btn" data-tab="log">LOG</button>
   </div>
 
-  <!-- ── PANELS ─────────────────────────────────────────── -->
-  <div id="panels">
+  <!-- ════════════════════════════════════════════
+       DASHBOARD
+  ════════════════════════════════════════════ -->
+  <div class="panel active" id="tab-dash">
 
-    <!-- ════════════════════════════════════════════
-         DASHBOARD
-    ════════════════════════════════════════════ -->
-    <div class="panel active" id="tab-dash">
-
-      <div class="card" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px">
-        <div style="text-align:center">
-          <div class="card-title" style="margin-bottom:4px">TARGET OPEN</div>
-          <div class="big-num big-time" id="d-target">--:-- --</div>
+    <div class="card">
+      <div class="time-grid">
+        <div class="time-box">
+          <div class="time-label">Target Open</div>
+          <div class="time-val" id="d-target">--:--</div>
         </div>
-        <div style="text-align:center">
-          <div class="card-title" style="margin-bottom:4px">TRUE ALERT</div>
-          <div class="big-num big-time" id="d-alert" style="color:var(--warn)">--:--:--.---</div>
+        <div class="time-box">
+          <div class="time-label">True Alert</div>
+          <div class="time-val" id="d-alert" style="color:var(--warn)">--:--:--.---</div>
         </div>
       </div>
+    </div>
 
-      <div class="card">
-        <div class="card-title">TIME UNTIL ALERT</div>
-        <div class="countdown-big" id="d-countdown">--:--:--.---</div>
+    <div class="card">
+      <div class="card-title">Time Until Alert</div>
+      <div id="d-countdown">--:--:--.---</div>
+    </div>
+
+    <div class="card">
+      <button class="btn btn-primary" id="btn-calc" style="margin-bottom:6px">
+        ◈  Calculate Alert Time
+      </button>
+      <div class="btn-row">
+        <button class="btn btn-warn"  id="btn-arm">▶  ARM</button>
+        <button class="btn btn-ghost" id="btn-cancel">✕  Cancel</button>
       </div>
+    </div>
 
-      <div class="go-display" id="go-display">🚨 GO! 🚨</div>
+    <div class="card">
+      <div class="card-title">Timing Breakdown</div>
+      <div class="breakdown">
+        <div class="bd-item"><div class="bd-label">Latency</div>
+          <div class="bd-val" id="bd-lat">-- ms</div></div>
+        <div class="bd-item"><div class="bd-label">Spike Delay</div>
+          <div class="bd-val" id="bd-spike">-- ms</div></div>
+        <div class="bd-item"><div class="bd-label">Reaction</div>
+          <div class="bd-val" id="bd-react">-- ms</div></div>
+        <div class="bd-item"><div class="bd-label">Total Offset</div>
+          <div class="bd-val" id="bd-offset">-- ms</div></div>
+      </div>
+    </div>
 
-      <div class="card">
-        <button class="btn btn-primary" id="btn-calc">◈  CALCULATE ALERT TIME</button>
-        <div style="height:8px"></div>
-        <div class="btn-row">
-          <button class="btn btn-warn" id="btn-arm">▶  ARM ALERT</button>
-          <button class="btn btn-ghost" id="btn-cancel">✕  CANCEL</button>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       PROFILES
+  ════════════════════════════════════════════ -->
+  <div class="panel" id="tab-profiles">
+    <div class="card">
+      <div class="card-title">Select Profile</div>
+      <div class="field-group">
+        <div class="profile-select-wrap">
+          <select id="prof-select" style="padding-right:28px">
+            <option value="">— none —</option>
+          </select>
         </div>
       </div>
-
-      <div class="card">
-        <div class="card-title">TIMING BREAKDOWN</div>
-        <div class="breakdown">
-          <div class="bd-item"><div class="bd-label">Current Latency</div>
-            <div class="bd-val" id="bd-lat">-- ms</div></div>
-          <div class="bd-item"><div class="bd-label">Spike Delay</div>
-            <div class="bd-val" id="bd-spike">-- ms</div></div>
-          <div class="bd-item"><div class="bd-label">Reaction Time</div>
-            <div class="bd-val" id="bd-react">-- ms</div></div>
-          <div class="bd-item"><div class="bd-label">Total Offset</div>
-            <div class="bd-val" id="bd-offset">-- ms</div></div>
-        </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-load-prof">Load</button>
+        <button class="btn btn-ghost"   id="btn-new-prof">New</button>
+        <button class="btn btn-danger"  id="btn-del-prof">Delete</button>
       </div>
-
-    </div><!-- /dash -->
-
-    <!-- ════════════════════════════════════════════
-         PROFILES
-    ════════════════════════════════════════════ -->
-    <div class="panel" id="tab-profiles">
-
-      <div class="card">
-        <div class="card-title">SELECT PROFILE</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Profile Settings</div>
+      <div class="field-group">
+        <label>Profile Name</label>
+        <input type="text" id="pf-name" placeholder="Cape Henlopen — Delaware">
+      </div>
+      <div class="field-group">
+        <label>Host / URL</label>
+        <input type="text" id="pf-host"
+          placeholder="delawarestateparks.reserveamerica.com"
+          inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="field-grid">
         <div class="field-group">
-          <div class="profile-select-wrap">
-            <select id="prof-select" style="padding-right:32px">
-              <option value="">— none —</option>
-            </select>
-          </div>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-primary" id="btn-load-prof">Load</button>
-          <button class="btn btn-ghost"   id="btn-new-prof">New</button>
-          <button class="btn btn-danger"  id="btn-del-prof">Delete</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">PROFILE SETTINGS</div>
-        <div class="field-group">
-          <label>Profile Name</label>
-          <input type="text"   id="pf-name"     placeholder="Maryland — Cunningham Falls">
-        </div>
-        <div class="field-group">
-          <label>Host / URL</label>
-          <input type="text"   id="pf-host"     placeholder="parkreservations.maryland.gov"
-            inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false">
-        </div>
-        <div class="field-grid">
-          <div class="field-group">
-            <label>Open Hour (0–23)</label>
-            <input type="number" id="pf-hour"   min="0" max="23" inputmode="numeric">
-          </div>
-          <div class="field-group">
-            <label>Open Minute (0–59)</label>
-            <input type="number" id="pf-minute" min="0" max="59" inputmode="numeric">
-          </div>
+          <label>Open Hour (0–23)</label>
+          <input type="number" id="pf-hour" min="0" max="23" inputmode="numeric">
         </div>
         <div class="field-group">
-          <label>Your Reaction Time (ms)</label>
-          <input type="number" id="pf-react"    min="50" max="1000"
-            value="200" inputmode="numeric">
-        </div>
-        <button class="btn btn-primary" id="btn-save-prof">💾  Save Profile</button>
-      </div>
-
-    </div><!-- /profiles -->
-
-    <!-- ════════════════════════════════════════════
-         LATENCY
-    ════════════════════════════════════════════ -->
-    <div class="panel" id="tab-latency">
-      <div class="card">
-        <div class="card-title">ROUND-TRIP LATENCY</div>
-        <div class="lat-big" id="lat-display">-- ms</div>
-        <div class="progress-track">
-          <div class="progress-fill" id="lat-bar"></div>
-        </div>
-        <div id="lat-detail" style="font-size:.75rem;color:var(--dim);text-align:center;
-          margin-bottom:10px">--</div>
-        <button class="btn btn-primary" id="btn-measure">▶  Measure Latency (10 samples)</button>
-      </div>
-
-      <div class="card">
-        <div class="card-title">SAMPLE LOG</div>
-        <div id="lat-sample-log" style="font-family:var(--mono);font-size:.8rem;
-          color:var(--acc);background:var(--bg4);border-radius:8px;padding:10px;
-          height:180px;overflow-y:auto"></div>
-      </div>
-    </div><!-- /latency -->
-
-    <!-- ════════════════════════════════════════════
-         COLLECTION
-    ════════════════════════════════════════════ -->
-    <div class="panel" id="tab-collect">
-      <div class="card">
-        <div class="card-title">MANUAL COLLECTION SESSION</div>
-        <p style="font-size:.8rem;color:var(--dim);margin-bottom:10px;line-height:1.5">
-          Runs a collection session for the loaded profile: starts 5 min before
-          the target time and stops 1 min after. Run this in the days before
-          your reservation to build historical data.
-        </p>
-        <div class="btn-row">
-          <button class="btn btn-primary" id="btn-start-col">▶  Start Session</button>
-          <button class="btn btn-ghost"   id="btn-stop-col">■  Stop</button>
-        </div>
-        <div id="col-status" style="margin-top:10px;font-size:.8rem;color:var(--dim)">
-          Idle — load a profile, then start collection
+          <label>Open Minute (0–59)</label>
+          <input type="number" id="pf-minute" min="0" max="59" inputmode="numeric">
         </div>
       </div>
-      <div class="card" style="flex:1">
-        <div class="card-title">LIVE LOG</div>
-        <div id="col-log">Waiting for data…</div>
+      <div class="field-group">
+        <label>Your Reaction Time (ms)</label>
+        <input type="number" id="pf-react" min="50" max="1000"
+          value="200" inputmode="numeric">
       </div>
-    </div><!-- /collect -->
+      <button class="btn btn-primary" id="btn-save-prof">💾  Save Profile</button>
+    </div>
+  </div>
 
-    <!-- ════════════════════════════════════════════
-         ANALYSIS
-    ════════════════════════════════════════════ -->
-    <div class="panel" id="tab-analysis">
-      <div class="card">
-        <button class="btn btn-primary" id="btn-analyze">▶  Run Spike Analysis</button>
+  <!-- ════════════════════════════════════════════
+       LATENCY
+  ════════════════════════════════════════════ -->
+  <div class="panel" id="tab-latency">
+    <div class="card">
+      <div class="card-title">Round-Trip Latency</div>
+      <div class="lat-big" id="lat-display">-- ms</div>
+      <div class="progress-track">
+        <div class="progress-fill" id="lat-bar"></div>
       </div>
-      <div class="card">
-        <div class="card-title">HISTORICAL RESULTS</div>
-        <div class="analysis-grid">
-          <div class="an-item"><div class="an-label">Baseline<br>(5 min out)</div>
-            <div class="an-val" id="an-base">--</div></div>
-          <div class="an-item"><div class="an-label">Peak<br>(20 sec out)</div>
-            <div class="an-val" id="an-peak">--</div></div>
-          <div class="an-item"><div class="an-label">Spike Delay</div>
-            <div class="an-val" id="an-spike">--</div></div>
-          <div class="an-item"><div class="an-label">Baseline<br>Samples</div>
-            <div class="an-val" id="an-nb">--</div></div>
-          <div class="an-item"><div class="an-label">Peak<br>Samples</div>
-            <div class="an-val" id="an-np">--</div></div>
-          <div class="an-item"><div class="an-label">Days of<br>Data</div>
-            <div class="an-val" id="an-days">--</div></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title">LATENCY HISTORY (ASCII)</div>
-        <pre id="an-chart" style="font-size:.65rem;color:var(--acc);
-          overflow-x:auto;line-height:1.4">No data yet</pre>
-      </div>
-    </div><!-- /analysis -->
+      <div id="lat-detail" style="font-size:.7rem;color:var(--dim);
+        text-align:center;margin-bottom:8px">--</div>
+      <button class="btn btn-primary" id="btn-measure">▶  Measure (10 samples)</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Sample Log</div>
+      <div id="lat-sample-log" class="live-log"></div>
+    </div>
+  </div>
 
-    <!-- ════════════════════════════════════════════
-         LOG
-    ════════════════════════════════════════════ -->
-    <div class="panel" id="tab-log">
-      <div class="card">
-        <div class="btn-row">
-          <button class="btn btn-ghost" id="btn-refresh-log">↻  Refresh</button>
-          <button class="btn btn-ghost" id="btn-purge-log">⬡  Purge Old (&gt;10d)</button>
-          <button class="btn btn-ghost" id="btn-export-log">↓  Export CSV</button>
-        </div>
-        <div id="log-count" style="margin-top:8px;font-size:.75rem;color:var(--dim)">--</div>
+  <!-- ════════════════════════════════════════════
+       COLLECTION
+  ════════════════════════════════════════════ -->
+  <div class="panel" id="tab-collect">
+    <div class="card">
+      <div class="card-title">Manual Collection Session</div>
+      <p style="font-size:.75rem;color:var(--dim);margin-bottom:8px;line-height:1.5">
+        Collects latency samples from 5 min before to 1 min after the target time.
+        Run on days before your reservation to build historical spike data.
+      </p>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-start-col">▶  Start</button>
+        <button class="btn btn-ghost"   id="btn-stop-col">■  Stop</button>
       </div>
-      <div class="card" style="padding:0;overflow:hidden">
-        <div id="log-table-wrap">
-          <table>
-            <thead><tr>
-              <th>TIMESTAMP</th><th>HOST</th><th>LATENCY ms</th><th>SESSION</th>
-            </tr></thead>
-            <tbody id="log-tbody"></tbody>
-          </table>
-        </div>
+      <div id="col-status" style="margin-top:8px;font-size:.75rem;color:var(--dim)">
+        Idle — load a profile first
       </div>
-    </div><!-- /log -->
+    </div>
+    <div class="card">
+      <div class="card-title">Live Log</div>
+      <div id="col-log" class="live-log">Waiting for data…</div>
+    </div>
+  </div>
 
-  </div><!-- /panels -->
+  <!-- ════════════════════════════════════════════
+       ANALYSIS
+  ════════════════════════════════════════════ -->
+  <div class="panel" id="tab-analysis">
+    <div class="card">
+      <button class="btn btn-primary" id="btn-analyze">▶  Run Spike Analysis</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Historical Results</div>
+      <div class="analysis-grid">
+        <div class="an-item"><div class="an-label">Baseline<br>5 min out</div>
+          <div class="an-val" id="an-base">--</div></div>
+        <div class="an-item"><div class="an-label">Peak<br>20 sec out</div>
+          <div class="an-val" id="an-peak">--</div></div>
+        <div class="an-item"><div class="an-label">Spike<br>Delay</div>
+          <div class="an-val" id="an-spike">--</div></div>
+        <div class="an-item"><div class="an-label">Baseline<br>Samples</div>
+          <div class="an-val" id="an-nb">--</div></div>
+        <div class="an-item"><div class="an-label">Peak<br>Samples</div>
+          <div class="an-val" id="an-np">--</div></div>
+        <div class="an-item"><div class="an-label">Days of<br>Data</div>
+          <div class="an-val" id="an-days">--</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Latency History</div>
+      <pre id="an-chart" style="font-size:.6rem;color:var(--acc);
+        overflow-x:auto;line-height:1.4">No data yet</pre>
+    </div>
+  </div>
 
-  <!-- ── STATUS BAR ─────────────────────────────────────── -->
+  <!-- ════════════════════════════════════════════
+       LOG
+  ════════════════════════════════════════════ -->
+  <div class="panel" id="tab-log">
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="btn-refresh-log">↻ Refresh</button>
+        <button class="btn btn-ghost" id="btn-purge-log">⬡ Purge &gt;10d</button>
+        <button class="btn btn-ghost" id="btn-export-log">↓ CSV</button>
+      </div>
+      <div id="log-count" style="margin-top:6px;font-size:.7rem;color:var(--dim)">--</div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="log-wrap">
+        <table>
+          <thead><tr>
+            <th>TIMESTAMP</th><th>HOST</th><th>MS</th><th>SESSION</th>
+          </tr></thead>
+          <tbody id="log-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FIXED STATUS BAR ───────────────────────────────── -->
   <div id="statusbar">Ready</div>
 
-</div><!-- /shell -->
-
 <script>
-/* ═══════════════════════════════════════════════════════════════════════════
-   CAMPSITE TIMER — iPadOS PWA
-   All six functional requirements implemented in vanilla JS + Web APIs.
-═══════════════════════════════════════════════════════════════════════════ */
-
 'use strict';
 
-// ─── Constants ──────────────────────────────────────────────────────────────
 const PING_COUNT       = 10;
 const PRE_WIN_SEC      = 5 * 60;
 const POST_WIN_SEC     = 1 * 60;
 const LOG_MAX_DAYS     = 10;
 const STORAGE_PROFILES = 'ct_profiles';
 const STORAGE_LOG      = 'ct_log';
+const STORAGE_HINT     = 'ct_hint_dismissed';
 const DEF_REACTION     = 200;
 
-// ─── State ───────────────────────────────────────────────────────────────────
 let state = {
-  currentLatency: 0,      // ms — most recent measured avg
-  alertTime: null,        // Date — calculated alert moment
-  alarmArmed: false,
-  alarmTimer: null,       // requestAnimationFrame id
-  collectTimer: null,     // setInterval id for collection
-  activeProfile: null,    // currently loaded profile object
+  currentLatency: 0,
+  alertTime:      null,
+  alarmArmed:     false,
+  activeProfile:  null,
+  collectTimer:   null,
 };
 
-// ─── 1. Profile Manager ──────────────────────────────────────────────────────
-
+// ── 1. Profile Manager ────────────────────────────────────
 const PM = {
-  load() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_PROFILES) || '[]'); }
-    catch { return []; }
+  load()    { try{return JSON.parse(localStorage.getItem(STORAGE_PROFILES)||'[]');}catch{return[];} },
+  save(p)   { localStorage.setItem(STORAGE_PROFILES,JSON.stringify(p)); },
+  all()     { return this.load(); },
+  byName(n) { return this.all().find(p=>p.name===n)||null; },
+  add(name,host,hour,minute,reaction_ms=DEF_REACTION){
+    const p=[...this.load(),{id:Date.now(),name,host,hour:+hour,minute:+minute,reaction_ms:+reaction_ms}];
+    this.save(p);return p[p.length-1];
   },
-  save(profiles) {
-    localStorage.setItem(STORAGE_PROFILES, JSON.stringify(profiles));
+  update(id,name,host,hour,minute,reaction_ms){
+    this.save(this.load().map(p=>p.id===id?{...p,name,host,hour:+hour,minute:+minute,reaction_ms:+reaction_ms}:p));
   },
-  all()    { return this.load(); },
-  byName(n){ return this.all().find(p => p.name === n) || null; },
-  add(name, host, hour, minute, reaction_ms = DEF_REACTION) {
-    const profiles = this.load();
-    const p = { id: Date.now(), name, host, hour:+hour, minute:+minute,
-                reaction_ms:+reaction_ms };
-    profiles.push(p);
-    this.save(profiles);
-    return p;
-  },
-  update(id, name, host, hour, minute, reaction_ms) {
-    const profiles = this.load().map(p =>
-      p.id === id ? {...p, name, host, hour:+hour, minute:+minute,
-                     reaction_ms:+reaction_ms} : p);
-    this.save(profiles);
-  },
-  delete(id) {
-    this.save(this.load().filter(p => p.id !== id));
-  },
+  delete(id){ this.save(this.load().filter(p=>p.id!==id)); },
 };
 
-// ─── 2. Latency Measurer (HEAD requests) ────────────────────────────────────
-
+// ── 2. Latency ────────────────────────────────────────────
 const Latency = {
-  async measureOne(host) {
-    const url = host.startsWith('http') ? host : `https://${host}`;
-    try {
-      const t0 = performance.now();
-      await fetch(url, {
-        method: 'HEAD', mode: 'no-cors', cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      return performance.now() - t0;
-    } catch {
-      // no-cors fetch still resolves with opaque response; network errors throw
-      return null;
-    }
+  async measureOne(host){
+    const url=host.startsWith('http')?host:`https://${host}`;
+    try{
+      const t0=performance.now();
+      await fetch(url,{method:'HEAD',mode:'no-cors',cache:'no-store'});
+      return performance.now()-t0;
+    }catch{return null;}
   },
-  avg(samples) {
-    return samples.length ? samples.reduce((a,b)=>a+b,0)/samples.length : 0;
-  },
-  async measureBatch(host, count = PING_COUNT, progressCb) {
-    const results = [];
-    for (let i = 0; i < count; i++) {
-      const v = await this.measureOne(host);
-      if (v !== null) {
-        results.push(v);
-        if (progressCb) progressCb(i+1, count, v, results);
-      }
+  avg(s){return s.length?s.reduce((a,b)=>a+b,0)/s.length:0;},
+  async measureBatch(host,count=PING_COUNT,cb){
+    const r=[];
+    for(let i=0;i<count;i++){
+      const v=await this.measureOne(host);
+      if(v!==null){r.push(v);if(cb)cb(i+1,count,v,r);}
       await sleep(300);
     }
-    return results;
+    return r;
   }
 };
 
-// ─── 3. Data Collector ───────────────────────────────────────────────────────
-
+// ── 3. Data Store ─────────────────────────────────────────
 const DataStore = {
-  load() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_LOG) || '[]'); }
-    catch { return []; }
+  load()  { try{return JSON.parse(localStorage.getItem(STORAGE_LOG)||'[]');}catch{return[];} },
+  save(r) { localStorage.setItem(STORAGE_LOG,JSON.stringify(r)); },
+  append(hostname,latency_ms,session='manual'){
+    const r=this.load();
+    r.push({timestamp:new Date().toISOString(),hostname,latency_ms:+latency_ms.toFixed(2),session});
+    this.save(r);
   },
-  save(rows) {
-    localStorage.setItem(STORAGE_LOG, JSON.stringify(rows));
-  },
-  append(hostname, latency_ms, session = 'manual') {
-    const rows = this.load();
-    rows.push({ timestamp: new Date().toISOString(), hostname,
-                latency_ms: +latency_ms.toFixed(2), session });
-    this.save(rows);
-  },
-  getAll(hostname) {
-    const rows = this.load();
-    return hostname ? rows.filter(r => r.hostname === hostname) : rows;
-  },
-  // 6. Data Maintenance — purge entries older than LOG_MAX_DAYS
-  purgeOld() {
-    const cutoff = Date.now() - LOG_MAX_DAYS * 86400000;
-    const rows   = this.load();
-    const kept   = rows.filter(r => new Date(r.timestamp).getTime() >= cutoff);
-    const removed = rows.length - kept.length;
-    this.save(kept);
-    return removed;
+  getAll(hostname){ const r=this.load();return hostname?r.filter(x=>x.hostname===hostname):r; },
+  purgeOld(){
+    const cut=Date.now()-LOG_MAX_DAYS*86400000,rows=this.load();
+    const kept=rows.filter(r=>new Date(r.timestamp).getTime()>=cut);
+    this.save(kept);return rows.length-kept.length;
   }
 };
 
-// ─── 4. Predictive Analyzer ──────────────────────────────────────────────────
-
+// ── 4. Analyzer ───────────────────────────────────────────
 const Analyzer = {
-  analyze(hostname, hour, minute) {
-    const rows = DataStore.getAll(hostname);
-    if (!rows.length) return null;
-
-    const baseline = [], peak = [];
-    for (const row of rows) {
-      const ts  = new Date(row.timestamp);
-      const ref = new Date(ts);
-      ref.setHours(hour, minute, 0, 0);
-      const diff = (ts - ref) / 1000;         // seconds relative to target time
-
-      if (diff >= -300 && diff <= -240) baseline.push(+row.latency_ms);
-      else if (diff >= -20 && diff <= -5) peak.push(+row.latency_ms);
+  analyze(hostname,hour,minute){
+    const rows=DataStore.getAll(hostname);
+    if(!rows.length)return null;
+    const baseline=[],peak=[];
+    for(const row of rows){
+      const ts=new Date(row.timestamp),ref=new Date(ts);
+      ref.setHours(hour,minute,0,0);
+      const d=(ts-ref)/1000;
+      if(d>=-300&&d<=-240)baseline.push(+row.latency_ms);
+      else if(d>=-20&&d<=-5)peak.push(+row.latency_ms);
     }
-
-    if (!baseline.length && !peak.length) return null;
-    const bAvg = Latency.avg(baseline);
-    const pAvg = peak.length ? Latency.avg(peak) : bAvg;
-    const spike = Math.max(0, pAvg - bAvg);
-
-    // unique days with data
-    const days = new Set(rows.map(r => r.timestamp.slice(0,10))).size;
-
-    return { baseline_ms: bAvg, peak_ms: pAvg, spike_delay_ms: spike,
-             n_baseline: baseline.length, n_peak: peak.length, days };
+    if(!baseline.length&&!peak.length)return null;
+    const bAvg=Latency.avg(baseline),pAvg=peak.length?Latency.avg(peak):bAvg;
+    return{baseline_ms:bAvg,peak_ms:pAvg,spike_delay_ms:Math.max(0,pAvg-bAvg),
+           n_baseline:baseline.length,n_peak:peak.length,
+           days:new Set(rows.map(r=>r.timestamp.slice(0,10))).size};
   },
-
-  // Alert Time = Target - Reaction - CurrentLatency - SpikeDelay
-  calcAlertTime(hour, minute, latMs, spikeMs, reactionMs) {
-    const now    = new Date();
-    const target = new Date(now);
-    target.setHours(hour, minute, 0, 0);
-    if (target <= now) target.setDate(target.getDate() + 1);
-
-    const offsetMs = reactionMs + latMs + spikeMs;
-    const alertTime = new Date(target.getTime() - offsetMs);
-    return { alertTime, offsetMs, target };
+  calcAlertTime(hour,minute,latMs,spikeMs,reactionMs){
+    const now=new Date(),target=new Date(now);
+    target.setHours(hour,minute,0,0);
+    if(target<=now)target.setDate(target.getDate()+1);
+    const offsetMs=reactionMs+latMs+spikeMs;
+    return{alertTime:new Date(target.getTime()-offsetMs),offsetMs,target};
   }
 };
 
-// ─── 5. Alert System ─────────────────────────────────────────────────────────
-
+// ── 5. Alert System ───────────────────────────────────────
 const AlertSystem = {
-  _rafId: null,
-  _target: null,
-  _cb: null,
-  _audioCtx: null,
-
-  schedule(when, cb) {
-    this._target = when.getTime();
-    this._cb     = cb;
-    this._arm();
-  },
-
-  _arm() {
-    if (this._rafId) cancelAnimationFrame(this._rafId);
-
-    const loop = () => {
-      const delta = this._target - Date.now();
-      if (delta <= 0) {
-        this._fire();
-      } else if (delta > 500) {
-        // Poll every 50 ms when far out
-        setTimeout(() => { if (this._target) this._arm(); }, 50);
-      } else {
-        // Tight RAF loop for final 500 ms — millisecond precision
-        this._rafId = requestAnimationFrame(loop);
-      }
+  _target:null,_cb:null,_audioCtx:null,_rafId:null,
+  schedule(when,cb){this._target=when.getTime();this._cb=cb;this._arm();},
+  _arm(){
+    if(this._rafId)cancelAnimationFrame(this._rafId);
+    const loop=()=>{
+      const delta=this._target-Date.now();
+      if(delta<=0)this._fire();
+      else if(delta>500)setTimeout(()=>{if(this._target)this._arm();},50);
+      else this._rafId=requestAnimationFrame(loop);
     };
-    this._rafId = requestAnimationFrame(loop);
+    this._rafId=requestAnimationFrame(loop);
   },
-
-  cancel() {
-    if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
-    this._target = null;
-  },
-
-  _fire() {
-    this._target = null;
-    this._playSound();
-    if (this._cb) this._cb();
-  },
-
-  _playSound() {
-    try {
-      if (!this._audioCtx || this._audioCtx.state === 'closed')
-        this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const ctx = this._audioCtx;
-
-      // 3-tone win chime
-      const notes = [880, 1108, 1318];
-      notes.forEach((freq, i) => {
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.value = freq;
-        const t = ctx.currentTime + i * 0.15;
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.35, t + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-        osc.start(t);
-        osc.stop(t + 0.55);
+  cancel(){if(this._rafId){cancelAnimationFrame(this._rafId);this._rafId=null;}this._target=null;},
+  _fire(){this._target=null;this._playSound();if(this._cb)this._cb();},
+  _playSound(){
+    try{
+      if(!this._audioCtx||this._audioCtx.state==='closed')
+        this._audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+      const ctx=this._audioCtx;
+      [880,1108,1318].forEach((freq,i)=>{
+        const osc=ctx.createOscillator(),gain=ctx.createGain();
+        osc.connect(gain);gain.connect(ctx.destination);
+        osc.type='sine';osc.frequency.value=freq;
+        const t=ctx.currentTime+i*0.15;
+        gain.gain.setValueAtTime(0,t);
+        gain.gain.linearRampToValueAtTime(0.4,t+0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001,t+0.55);
+        osc.start(t);osc.stop(t+0.6);
       });
-    } catch(e) { console.warn('Audio error:', e); }
+    }catch(e){console.warn('audio:',e);}
   }
 };
 
-// ─── Utilities ───────────────────────────────────────────────────────────────
-
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-function fmtTime(date) {
-  if (!date) return '--:--:--.---';
-  const h  = String(date.getHours()).padStart(2,'0');
-  const m  = String(date.getMinutes()).padStart(2,'0');
-  const s  = String(date.getSeconds()).padStart(2,'0');
-  const ms = String(Math.floor(date.getMilliseconds())).padStart(3,'0');
-  return `${h}:${m}:${s}.${ms}`;
+// ── Utilities ─────────────────────────────────────────────
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function fmtTime(d){
+  if(!d)return'--:--:--.---';
+  return`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad3(Math.floor(d.getMilliseconds()))}`;
 }
-
-function fmtCountdown(ms) {
-  if (ms < 0) return '--:--:--.---';
-  const h   = Math.floor(ms / 3600000);
-  const min = Math.floor((ms % 3600000) / 60000);
-  const sec = (ms % 60000) / 1000;
-  return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}:${sec.toFixed(3).padStart(6,'0')}`;
+function fmtCountdown(ms){
+  if(ms<0)return'--:--:--.---';
+  const h=Math.floor(ms/3600000),min=Math.floor((ms%3600000)/60000),sec=(ms%60000)/1000;
+  return`${pad(h)}:${pad(min)}:${sec.toFixed(3).padStart(6,'0')}`;
 }
+function pad(n){return String(n).padStart(2,'0');}
+function pad3(n){return String(n).padStart(3,'0');}
+function cleanHost(raw){return raw.replace(/^https?:\/\//,'').split('/')[0].split('?')[0].trim();}
+function setStatus(msg){document.getElementById('statusbar').textContent=msg;}
 
-function cleanHost(raw) {
-  return raw.replace(/^https?:\/\//,'').split('/')[0].split('?')[0].trim();
-}
-
-function setStatus(msg) {
-  document.getElementById('statusbar').textContent = msg;
-}
-
-// ─── Live Clock ──────────────────────────────────────────────────────────────
-
-function startClock() {
-  const clockEl     = document.getElementById('liveclock');
-  const countdownEl = document.getElementById('d-countdown');
-
-  const tick = () => {
-    const now = new Date();
-    clockEl.textContent = fmtTime(now);
-
-    // Countdown
-    if (state.alertTime) {
-      const delta = state.alertTime - now;
-      if (delta > 0) {
-        countdownEl.textContent = fmtCountdown(delta);
-        const secs = delta / 1000;
-        countdownEl.style.color =
-          secs < 10 ? 'var(--danger)' : secs < 60 ? 'var(--warn)' : 'var(--acc)';
-      } else if (state.alarmArmed) {
-        countdownEl.textContent = 'FIRED!';
-        countdownEl.style.color = 'var(--danger)';
+// ── Clock ─────────────────────────────────────────────────
+function startClock(){
+  const clockEl=document.getElementById('liveclock');
+  const cdEl=document.getElementById('d-countdown');
+  const tick=()=>{
+    const now=new Date();
+    clockEl.textContent=fmtTime(now);
+    if(state.alertTime){
+      const delta=state.alertTime-now;
+      if(delta>0){
+        cdEl.textContent=fmtCountdown(delta);
+        const s=delta/1000;
+        cdEl.style.color=s<10?'var(--danger)':s<60?'var(--warn)':'var(--acc)';
       }
     }
     requestAnimationFrame(tick);
@@ -691,417 +601,284 @@ function startClock() {
   requestAnimationFrame(tick);
 }
 
-// ─── Tab Navigation ──────────────────────────────────────────────────────────
-
-function initTabs() {
-  const tabs   = document.querySelectorAll('.tab-btn');
-  const panels = document.querySelectorAll('.panel');
-  tabs.forEach(btn => {
-    btn.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      panels.forEach(p => p.classList.remove('active'));
+// ── Tabs ──────────────────────────────────────────────────
+function initTabs(){
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.tab-btn').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
     });
   });
 }
 
-// ─── Profile UI ──────────────────────────────────────────────────────────────
-
-function refreshProfileSelect() {
-  const sel = document.getElementById('prof-select');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">— none —</option>';
-  PM.all().forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p.name;
-    opt.textContent = p.name;
-    sel.appendChild(opt);
+// ── Split View Hint ───────────────────────────────────────
+function initHint(){
+  if(localStorage.getItem(STORAGE_HINT)){
+    document.getElementById('splitview-hint').style.display='none';
+    return;
+  }
+  document.getElementById('dismiss-hint').addEventListener('click',e=>{
+    e.preventDefault();
+    localStorage.setItem(STORAGE_HINT,'1');
+    document.getElementById('splitview-hint').style.display='none';
   });
-  if (cur) sel.value = cur;
 }
 
-function loadProfileToFields(p) {
-  document.getElementById('pf-name').value   = p.name;
-  document.getElementById('pf-host').value   = p.host;
-  document.getElementById('pf-hour').value   = p.hour;
-  document.getElementById('pf-minute').value = p.minute;
-  document.getElementById('pf-react').value  = p.reaction_ms ?? DEF_REACTION;
+// ── Profiles ──────────────────────────────────────────────
+function refreshProfileSelect(){
+  const sel=document.getElementById('prof-select'),cur=sel.value;
+  sel.innerHTML='<option value="">— none —</option>';
+  PM.all().forEach(p=>{
+    const o=document.createElement('option');
+    o.value=p.name;o.textContent=p.name;sel.appendChild(o);
+  });
+  if(cur)sel.value=cur;
 }
-
-function initProfiles() {
-  document.getElementById('btn-load-prof').addEventListener('click', () => {
-    const name = document.getElementById('prof-select').value;
-    const p = PM.byName(name);
-    if (!p) { alert('Select a profile first.'); return; }
-    loadProfileToFields(p);
-    state.activeProfile = p;
-    document.getElementById('d-target').textContent =
-      `${String(p.hour).padStart(2,'0')}:${String(p.minute).padStart(2,'0')}`;
-    setStatus(`Loaded: ${p.name}  ·  ${p.host}  ·  target ${p.hour}:${String(p.minute).padStart(2,'0')}`);
+function loadProfileToFields(p){
+  document.getElementById('pf-name').value  =p.name;
+  document.getElementById('pf-host').value  =p.host;
+  document.getElementById('pf-hour').value  =p.hour;
+  document.getElementById('pf-minute').value=p.minute;
+  document.getElementById('pf-react').value =p.reaction_ms??DEF_REACTION;
+}
+function initProfiles(){
+  document.getElementById('btn-load-prof').addEventListener('click',()=>{
+    const p=PM.byName(document.getElementById('prof-select').value);
+    if(!p){alert('Select a profile first.');return;}
+    loadProfileToFields(p);state.activeProfile=p;
+    document.getElementById('d-target').textContent=`${pad(p.hour)}:${pad(p.minute)}`;
+    setStatus(`Loaded: ${p.name}  ·  ${p.host}`);
   });
-
-  document.getElementById('btn-new-prof').addEventListener('click', () => {
-    loadProfileToFields({name:'New Profile',host:'reservations.example.gov',
-                          hour:10,minute:0,reaction_ms:DEF_REACTION});
-    document.getElementById('prof-select').value = '';
+  document.getElementById('btn-new-prof').addEventListener('click',()=>{
+    loadProfileToFields({name:'',host:'',hour:10,minute:0,reaction_ms:DEF_REACTION});
+    document.getElementById('prof-select').value='';
   });
-
-  document.getElementById('btn-del-prof').addEventListener('click', () => {
-    const name = document.getElementById('prof-select').value;
-    const p = PM.byName(name);
-    if (!p) { alert('Select a profile first.'); return; }
-    if (confirm(`Delete profile "${p.name}"?`)) {
-      PM.delete(p.id);
-      refreshProfileSelect();
-      setStatus(`Deleted: ${p.name}`);
-    }
+  document.getElementById('btn-del-prof').addEventListener('click',()=>{
+    const p=PM.byName(document.getElementById('prof-select').value);
+    if(!p){alert('Select a profile first.');return;}
+    if(confirm(`Delete "${p.name}"?`)){PM.delete(p.id);refreshProfileSelect();setStatus(`Deleted: ${p.name}`);}
   });
-
-  document.getElementById('btn-save-prof').addEventListener('click', () => {
-    const name    = document.getElementById('pf-name').value.trim();
-    const host    = document.getElementById('pf-host').value.trim();
-    const hour    = parseInt(document.getElementById('pf-hour').value);
-    const minute  = parseInt(document.getElementById('pf-minute').value);
-    const reaction= parseInt(document.getElementById('pf-react').value);
-
-    if (!name || !host)            { alert('Name and host are required.'); return; }
-    if (isNaN(hour)||isNaN(minute)){ alert('Hour and minute must be numbers.'); return; }
-
-    const existing = PM.byName(name);
-    if (existing) PM.update(existing.id, name, cleanHost(host), hour, minute, reaction);
-    else          PM.add(name, cleanHost(host), hour, minute, reaction);
-
+  document.getElementById('btn-save-prof').addEventListener('click',()=>{
+    const name=document.getElementById('pf-name').value.trim();
+    const host=document.getElementById('pf-host').value.trim();
+    const hour=parseInt(document.getElementById('pf-hour').value);
+    const min =parseInt(document.getElementById('pf-minute').value);
+    const react=parseInt(document.getElementById('pf-react').value);
+    if(!name||!host){alert('Name and host are required.');return;}
+    if(isNaN(hour)||isNaN(min)){alert('Hour and minute must be numbers.');return;}
+    const ex=PM.byName(name);
+    if(ex)PM.update(ex.id,name,cleanHost(host),hour,min,react);
+    else  PM.add(name,cleanHost(host),hour,min,react);
     refreshProfileSelect();
-    document.getElementById('prof-select').value = name;
+    document.getElementById('prof-select').value=name;
     setStatus(`Profile saved: ${name}`);
   });
-
   refreshProfileSelect();
 }
 
-// ─── Latency UI ──────────────────────────────────────────────────────────────
-
-function initLatency() {
-  document.getElementById('btn-measure').addEventListener('click', async () => {
-    const p = state.activeProfile;
-    if (!p) { alert('Load a profile first.'); return; }
-
-    document.getElementById('lat-display').textContent = '…';
-    document.getElementById('lat-sample-log').innerHTML = '';
+// ── Latency ───────────────────────────────────────────────
+function initLatency(){
+  document.getElementById('btn-measure').addEventListener('click',async()=>{
+    const p=state.activeProfile;
+    if(!p){alert('Load a profile first.');return;}
+    document.getElementById('lat-display').textContent='…';
+    document.getElementById('lat-sample-log').innerHTML='';
     setStatus(`Measuring 10 samples to ${p.host}…`);
-
-    let count = 0;
-    const results = await Latency.measureBatch(p.host, PING_COUNT, (i, total, v, all) => {
-      const avg = Latency.avg(all);
-      count = i;
-      document.getElementById('lat-display').textContent = `${avg.toFixed(1)} ms`;
-      document.getElementById('lat-bar').style.width = `${Math.min(avg/5, 100)}%`;
-      const log = document.getElementById('lat-sample-log');
+    const results=await Latency.measureBatch(p.host,PING_COUNT,(i,total,v,all)=>{
+      const avg=Latency.avg(all);
+      document.getElementById('lat-display').textContent=`${avg.toFixed(1)} ms`;
+      document.getElementById('lat-bar').style.width=`${Math.min(avg/5,100)}%`;
+      const log=document.getElementById('lat-sample-log');
       log.insertAdjacentHTML('beforeend',
-        `<div>sample ${i}/${total}  <span style="color:var(--acc)">${v.toFixed(2)} ms</span>  avg ${avg.toFixed(1)} ms</div>`);
-      log.scrollTop = log.scrollHeight;
-      setStatus(`Sampling ${i}/${total}  last=${v.toFixed(1)}ms  avg=${avg.toFixed(1)}ms`);
+        `<div>${i}/${total}  <span style="color:var(--acc)">${v.toFixed(1)} ms</span>  avg ${avg.toFixed(1)}</div>`);
+      log.scrollTop=log.scrollHeight;
+      setStatus(`Sampling ${i}/${total}  avg=${avg.toFixed(1)}ms`);
     });
-
-    if (results.length) {
-      const avg = Latency.avg(results);
-      state.currentLatency = avg;
-      document.getElementById('lat-display').textContent = `${avg.toFixed(1)} ms`;
-      document.getElementById('lat-detail').textContent =
-        `${results.length} samples  min=${Math.min(...results).toFixed(1)}  `+
-        `avg=${avg.toFixed(1)}  max=${Math.max(...results).toFixed(1)} ms`;
-      setStatus(`Latency: avg ${avg.toFixed(1)} ms  (${results.length} samples)`);
-    } else {
-      document.getElementById('lat-display').textContent = 'FAIL';
-      setStatus('Measurement failed — check host and network connection');
+    if(results.length){
+      const avg=Latency.avg(results);
+      state.currentLatency=avg;
+      document.getElementById('lat-detail').textContent=
+        `${results.length} samples  min=${Math.min(...results).toFixed(1)}  avg=${avg.toFixed(1)}  max=${Math.max(...results).toFixed(1)} ms`;
+      setStatus(`Latency: ${avg.toFixed(1)} ms avg`);
+    }else{
+      document.getElementById('lat-display').textContent='FAIL';
+      setStatus('Measurement failed — check host and network');
     }
   });
 }
 
-// ─── Dashboard UI ────────────────────────────────────────────────────────────
-
-function initDashboard() {
-  document.getElementById('btn-calc').addEventListener('click', () => {
-    const p = state.activeProfile;
-    if (!p) { alert('Load a profile first (Profiles tab).'); return; }
-
-    const lat    = state.currentLatency;
-    const anal   = Analyzer.analyze(p.host, p.hour, p.minute);
-    const spike  = anal ? anal.spike_delay_ms : 0;
-    const react  = p.reaction_ms ?? DEF_REACTION;
-
-    const { alertTime, offsetMs, target } = Analyzer.calcAlertTime(
-      p.hour, p.minute, lat, spike, react);
-
-    state.alertTime = alertTime;
-
-    // Update UI
-    document.getElementById('d-alert').textContent = fmtTime(alertTime);
-    document.getElementById('d-target').textContent =
-      `${String(p.hour).padStart(2,'0')}:${String(p.minute).padStart(2,'0')}`;
-    document.getElementById('bd-lat').textContent    = `${lat.toFixed(1)} ms`;
-    document.getElementById('bd-spike').textContent  = `${spike.toFixed(1)} ms`;
-    document.getElementById('bd-react').textContent  = `${react} ms`;
-    document.getElementById('bd-offset').textContent = `${offsetMs.toFixed(1)} ms`;
-
-    setStatus(`Alert time: ${fmtTime(alertTime)}  (offset ${offsetMs.toFixed(1)} ms)`);
+// ── Dashboard ─────────────────────────────────────────────
+function initDashboard(){
+  document.getElementById('btn-calc').addEventListener('click',()=>{
+    const p=state.activeProfile;
+    if(!p){alert('Load a profile first (Profiles tab).');return;}
+    const lat=state.currentLatency;
+    const anal=Analyzer.analyze(p.host,p.hour,p.minute);
+    const spike=anal?anal.spike_delay_ms:0;
+    const react=p.reaction_ms??DEF_REACTION;
+    const{alertTime,offsetMs}=Analyzer.calcAlertTime(p.hour,p.minute,lat,spike,react);
+    state.alertTime=alertTime;
+    document.getElementById('d-alert').textContent=fmtTime(alertTime);
+    document.getElementById('d-target').textContent=`${pad(p.hour)}:${pad(p.minute)}`;
+    document.getElementById('bd-lat').textContent=`${lat.toFixed(1)} ms`;
+    document.getElementById('bd-spike').textContent=`${spike.toFixed(1)} ms`;
+    document.getElementById('bd-react').textContent=`${react} ms`;
+    document.getElementById('bd-offset').textContent=`${offsetMs.toFixed(1)} ms`;
+    setStatus(`Alert: ${fmtTime(alertTime)}  offset ${offsetMs.toFixed(1)} ms`);
   });
-
-  document.getElementById('btn-arm').addEventListener('click', () => {
-    if (!state.alertTime)          { alert('Calculate alert time first.'); return; }
-    if (state.alertTime <= new Date()) { alert('Alert time is in the past — recalculate.'); return; }
-
-    state.alarmArmed = true;
-    document.getElementById('go-display').classList.remove('active');
-
-    AlertSystem.schedule(state.alertTime, () => {
-      state.alarmArmed = false;
-      showGo();
-    });
-    setStatus(`ALERT ARMED ◈  fires at ${fmtTime(state.alertTime)}`);
+  document.getElementById('btn-arm').addEventListener('click',()=>{
+    if(!state.alertTime){alert('Calculate alert time first.');return;}
+    if(state.alertTime<=new Date()){alert('Alert time is in the past — recalculate.');return;}
+    state.alarmArmed=true;
+    document.getElementById('go-banner').classList.remove('active','flashing');
+    AlertSystem.schedule(state.alertTime,showGo);
+    setStatus(`ARMED ◈  fires at ${fmtTime(state.alertTime)}`);
   });
-
-  document.getElementById('btn-cancel').addEventListener('click', () => {
-    AlertSystem.cancel();
-    state.alarmArmed = false;
-    document.getElementById('go-display').classList.remove('active');
-    document.getElementById('d-countdown').style.color = 'var(--acc)';
+  document.getElementById('btn-cancel').addEventListener('click',()=>{
+    AlertSystem.cancel();state.alarmArmed=false;
+    document.getElementById('go-banner').classList.remove('active','flashing');
+    document.getElementById('d-countdown').style.color='var(--acc)';
     setStatus('Alert cancelled');
   });
 }
 
-function showGo() {
-  const el = document.getElementById('go-display');
-  el.classList.add('active', 'flashing');
-  document.getElementById('d-countdown').textContent = '  GO!  ';
-  document.getElementById('d-countdown').style.color = '#000';
-
-  // Flash 6 times then stop
-  let n = 0;
-  const iv = setInterval(() => {
-    n++;
-    el.style.background = n % 2 ? 'var(--warn)' : 'var(--acc)';
-    if (n >= 8) {
-      clearInterval(iv);
-      el.classList.remove('flashing');
-      el.style.background = 'var(--acc)';
-    }
-  }, 280);
+function showGo(){
+  state.alarmArmed=false;
+  // Scroll to very top so the GO banner is visible immediately
+  window.scrollTo({top:0,behavior:'instant'});
+  const banner=document.getElementById('go-banner');
+  banner.classList.add('active','flashing');
+  document.getElementById('d-countdown').textContent='  GO!  ';
+  document.getElementById('d-countdown').style.color='var(--danger)';
+  // Stop flashing after 12 seconds but leave banner visible
+  setTimeout(()=>{
+    banner.classList.remove('flashing');
+    banner.style.background='var(--acc)';
+  },12000);
 }
 
-// ─── Collection UI ───────────────────────────────────────────────────────────
+// ── Collection ────────────────────────────────────────────
+function initCollection(){
+  const colLog=document.getElementById('col-log');
+  const colStatus=document.getElementById('col-status');
+  function logLine(t){colLog.textContent+=t+'\n';colLog.scrollTop=colLog.scrollHeight;}
 
-function initCollection() {
-  let colRunning = false;
-  let colInterval = null;
-
-  const colLog    = document.getElementById('col-log');
-  const colStatus = document.getElementById('col-status');
-
-  function logLine(txt) {
-    colLog.textContent += txt + '\n';
-    colLog.scrollTop = colLog.scrollHeight;
-  }
-
-  document.getElementById('btn-start-col').addEventListener('click', () => {
-    const p = state.activeProfile;
-    if (!p) { alert('Load a profile first.'); return; }
-    if (colRunning) return;
-
-    colRunning = true;
-    colLog.textContent = '';
-    logLine(`Session started for ${p.host}  target ${p.hour}:${String(p.minute).padStart(2,'0')}`);
-
-    // Calculate window times
-    const now    = new Date();
-    const target = new Date(now);
-    target.setHours(p.hour, p.minute, 0, 0);
-    if (target <= now) target.setDate(target.getDate() + 1);
-
-    const tStart = new Date(target.getTime() - PRE_WIN_SEC * 1000);
-    const tStop  = new Date(target.getTime() + POST_WIN_SEC * 1000);
-    const sid    = `auto_${target.toISOString().slice(0,16).replace('T','_')}`;
-
+  document.getElementById('btn-start-col').addEventListener('click',()=>{
+    const p=state.activeProfile;
+    if(!p){alert('Load a profile first.');return;}
+    if(state.collectTimer){clearInterval(state.collectTimer);}
+    colLog.textContent='';
+    const now=new Date(),target=new Date(now);
+    target.setHours(p.hour,p.minute,0,0);
+    if(target<=now)target.setDate(target.getDate()+1);
+    const tStart=new Date(target.getTime()-PRE_WIN_SEC*1000);
+    const tStop =new Date(target.getTime()+POST_WIN_SEC*1000);
+    const sid=`auto_${target.toISOString().slice(0,16).replace('T','_')}`;
+    logLine(`Session: ${p.host}`);
     logLine(`Window: ${fmtTime(tStart)} → ${fmtTime(tStop)}`);
-    colStatus.textContent = `Waiting for window to open at ${fmtTime(tStart)}…`;
-    colStatus.style.color = 'var(--dim)';
-
-    let phase = 'waiting';
-    colInterval = setInterval(async () => {
-      const now2 = new Date();
-
-      if (now2 < tStart) {
-        const left = Math.ceil((tStart - now2) / 1000);
-        const m = Math.floor(left/60), s = left%60;
-        colStatus.textContent = `Waiting… window opens in ${m}:${String(s).padStart(2,'0')}`;
+    let phase='waiting';
+    state.collectTimer=setInterval(async()=>{
+      const now2=new Date();
+      if(now2<tStart){
+        const s=Math.ceil((tStart-now2)/1000),m=Math.floor(s/60);
+        colStatus.textContent=`Waiting… window in ${m}:${pad(s%60)}`;
         return;
       }
-
-      if (now2 > tStop) {
-        clearInterval(colInterval);
-        colRunning = false;
-        colStatus.textContent = 'Session complete ✓';
-        colStatus.style.color = 'var(--acc)';
-        logLine('\n── Session complete ──');
-        return;
+      if(now2>tStop){
+        clearInterval(state.collectTimer);state.collectTimer=null;
+        colStatus.textContent='Complete ✓';colStatus.style.color='var(--acc)';
+        logLine('\n── Complete ──');return;
       }
-
-      if (phase === 'waiting') {
-        phase = 'collecting';
-        logLine('\n── Collecting ──');
-        colStatus.style.color = 'var(--acc)';
+      if(phase==='waiting'){phase='collecting';logLine('\n── Collecting ──');colStatus.style.color='var(--acc)';}
+      const v=await Latency.measureOne(p.host);
+      if(v!==null){
+        DataStore.append(p.host,v,sid);
+        logLine(`[${new Date().toISOString().slice(11,23)}]  ${v.toFixed(2)} ms`);
+        colStatus.textContent=`Collecting… ${v.toFixed(2)} ms`;
       }
-
-      const v = await Latency.measureOne(p.host);
-      if (v !== null) {
-        DataStore.append(p.host, v, sid);
-        const ts = new Date().toISOString().slice(11,23);
-        logLine(`[${ts}]  ${v.toFixed(2)} ms`);
-        colStatus.textContent = `Collecting… last: ${v.toFixed(2)} ms`;
-        setStatus(`Collection: ${v.toFixed(2)} ms  session ${sid}`);
-      }
-    }, 2000);
+    },2000);
+    colStatus.textContent='Session started…';colStatus.style.color='var(--warn)';
   });
-
-  document.getElementById('btn-stop-col').addEventListener('click', () => {
-    clearInterval(colInterval);
-    colRunning = false;
-    colStatus.textContent = 'Session stopped';
-    colStatus.style.color = 'var(--danger)';
-    logLine('\n── Stopped by user ──');
+  document.getElementById('btn-stop-col').addEventListener('click',()=>{
+    if(state.collectTimer){clearInterval(state.collectTimer);state.collectTimer=null;}
+    colStatus.textContent='Stopped';colStatus.style.color='var(--danger)';
+    colLog.textContent+='\n── Stopped ──';
   });
 }
 
-// ─── Analysis UI ─────────────────────────────────────────────────────────────
-
-function initAnalysis() {
-  document.getElementById('btn-analyze').addEventListener('click', () => {
-    const p = state.activeProfile;
-    if (!p) { alert('Load a profile first.'); return; }
-
-    const r = Analyzer.analyze(p.host, p.hour, p.minute);
-    if (!r) {
-      alert('No historical data for this profile.\nRun collection sessions first.');
-      return;
-    }
-
-    document.getElementById('an-base').textContent  = `${r.baseline_ms.toFixed(1)} ms`;
-    document.getElementById('an-peak').textContent  = `${r.peak_ms.toFixed(1)} ms`;
-    document.getElementById('an-spike').textContent = `${r.spike_delay_ms.toFixed(1)} ms`;
-    document.getElementById('an-nb').textContent    = r.n_baseline;
-    document.getElementById('an-np').textContent    = r.n_peak;
-    document.getElementById('an-days').textContent  = r.days;
-
+// ── Analysis ──────────────────────────────────────────────
+function initAnalysis(){
+  document.getElementById('btn-analyze').addEventListener('click',()=>{
+    const p=state.activeProfile;
+    if(!p){alert('Load a profile first.');return;}
+    const r=Analyzer.analyze(p.host,p.hour,p.minute);
+    if(!r){alert('No historical data yet.\nRun collection sessions first.');return;}
+    document.getElementById('an-base').textContent =`${r.baseline_ms.toFixed(1)}ms`;
+    document.getElementById('an-peak').textContent =`${r.peak_ms.toFixed(1)}ms`;
+    document.getElementById('an-spike').textContent=`${r.spike_delay_ms.toFixed(1)}ms`;
+    document.getElementById('an-nb').textContent   =r.n_baseline;
+    document.getElementById('an-np').textContent   =r.n_peak;
+    document.getElementById('an-days').textContent =r.days;
     drawChart(p.host);
-    setStatus(`Analysis: spike=${r.spike_delay_ms.toFixed(1)} ms  `+
-              `(baseline ${r.baseline_ms.toFixed(1)} → peak ${r.peak_ms.toFixed(1)} ms)`);
+    setStatus(`Spike: ${r.spike_delay_ms.toFixed(1)} ms`);
   });
 }
-
-function drawChart(hostname) {
-  const rows = DataStore.getAll(hostname).slice(-200);
-  const lats = rows.map(r => +r.latency_ms).filter(v => !isNaN(v));
-  if (!lats.length) return;
-
-  const W = 56, H = 12;
-  const lo = Math.min(...lats), hi = Math.max(...lats);
-  const span = hi - lo || 1;
-  const lines = [];
-
-  for (let row = H; row > 0; row--) {
-    const thresh = lo + span * (row / H);
-    let chars = '';
-    const step = Math.max(1, Math.floor(lats.length / W));
-    for (let i = 0; i < Math.min(lats.length, W * step); i += step) {
-      const chunk = lats.slice(i, i + step);
-      const avg   = chunk.reduce((a,b)=>a+b,0)/chunk.length;
-      chars += avg >= thresh ? '█' : ' ';
+function drawChart(hostname){
+  const lats=DataStore.getAll(hostname).slice(-200).map(r=>+r.latency_ms).filter(v=>!isNaN(v));
+  if(!lats.length)return;
+  const W=44,H=10,lo=Math.min(...lats),hi=Math.max(...lats),span=hi-lo||1;
+  const lines=[];
+  for(let row=H;row>0;row--){
+    const thresh=lo+span*(row/H);
+    const step=Math.max(1,Math.floor(lats.length/W));
+    let chars='';
+    for(let i=0;i<Math.min(lats.length,W*step);i+=step){
+      const chunk=lats.slice(i,i+step),avg=chunk.reduce((a,b)=>a+b)/chunk.length;
+      chars+=avg>=thresh?'█':' ';
     }
-    lines.push(`${thresh.toFixed(0).padStart(5)}ms│${chars}`);
+    lines.push(`${thresh.toFixed(0).padStart(4)}│${chars}`);
   }
-  lines.push(`      └${'─'.repeat(W)}`);
-  lines.push(`       last ${lats.length} samples  avg=${(lats.reduce((a,b)=>a+b)/lats.length).toFixed(1)} ms`);
-  document.getElementById('an-chart').textContent = lines.join('\n');
+  lines.push(`    └${'─'.repeat(W)}`);
+  lines.push(`    avg=${(lats.reduce((a,b)=>a+b)/lats.length).toFixed(1)} ms  n=${lats.length}`);
+  document.getElementById('an-chart').textContent=lines.join('\n');
 }
 
-// ─── Log UI ──────────────────────────────────────────────────────────────────
-
-function refreshLog() {
-  const tbody = document.getElementById('log-tbody');
-  const rows  = DataStore.getAll().slice(-500).reverse();
-  tbody.innerHTML = rows.map(r =>
-    `<tr><td>${r.timestamp.slice(0,23)}</td><td>${r.hostname}</td>`+
-    `<td>${r.latency_ms}</td><td>${r.session}</td></tr>`
+// ── Log ───────────────────────────────────────────────────
+function refreshLog(){
+  const tbody=document.getElementById('log-tbody');
+  const rows=DataStore.getAll().slice(-500).reverse();
+  tbody.innerHTML=rows.map(r=>
+    `<tr><td>${r.timestamp.slice(0,23)}</td><td>${r.hostname}</td><td>${r.latency_ms}</td><td>${r.session}</td></tr>`
   ).join('');
-  const total = DataStore.getAll().length;
-  document.getElementById('log-count').textContent =
-    `Showing ${rows.length} of ${total} entries`;
+  document.getElementById('log-count').textContent=
+    `${rows.length} of ${DataStore.getAll().length} entries`;
 }
-
-function initLog() {
-  document.getElementById('btn-refresh-log').addEventListener('click', refreshLog);
-
-  document.getElementById('btn-purge-log').addEventListener('click', () => {
-    const n = DataStore.purgeOld();
-    refreshLog();
+function initLog(){
+  document.getElementById('btn-refresh-log').addEventListener('click',refreshLog);
+  document.getElementById('btn-purge-log').addEventListener('click',()=>{
+    const n=DataStore.purgeOld();refreshLog();
     setStatus(`Purged ${n} entries older than ${LOG_MAX_DAYS} days`);
   });
-
-  document.getElementById('btn-export-log').addEventListener('click', () => {
-    const rows  = DataStore.getAll();
-    const header= 'timestamp,hostname,latency_ms,session\n';
-    const csv   = header + rows.map(r =>
-      `${r.timestamp},${r.hostname},${r.latency_ms},${r.session}`).join('\n');
-    const blob  = new Blob([csv], {type:'text/csv'});
-    const url   = URL.createObjectURL(blob);
-    const a     = document.createElement('a');
-    a.href = url;
-    a.download = `campsite_latency_log_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setStatus('CSV exported');
+  document.getElementById('btn-export-log').addEventListener('click',()=>{
+    const rows=DataStore.getAll();
+    const csv='timestamp,hostname,latency_ms,session\n'+
+      rows.map(r=>`${r.timestamp},${r.hostname},${r.latency_ms},${r.session}`).join('\n');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download=`campsite_log_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();setStatus('CSV exported');
   });
 }
 
-// ─── 6. Startup Maintenance ───────────────────────────────────────────────────
-
-function startupMaintenance() {
-  const removed = DataStore.purgeOld();
-  if (removed) setStatus(`Startup: removed ${removed} log entries older than ${LOG_MAX_DAYS} days`);
-}
-
-// ─── Service Worker (PWA) ─────────────────────────────────────────────────────
-
-if ('serviceWorker' in navigator) {
-  const SW_CODE = `
-    const CACHE = 'campsite-timer-v1';
-    self.addEventListener('install', e => {
-      self.skipWaiting();
-      e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
-    });
-    self.addEventListener('fetch', e => {
-      e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
-    });
-  `;
-  const swBlob = new Blob([SW_CODE], {type:'application/javascript'});
-  const swUrl  = URL.createObjectURL(swBlob);
-  navigator.serviceWorker.register(swUrl).catch(() => {});
-}
-
-// ─── Initialise Everything ───────────────────────────────────────────────────
-
-(function init() {
-  startupMaintenance();
-  startClock();
-  initTabs();
-  initProfiles();
-  initLatency();
-  initDashboard();
-  initCollection();
-  initAnalysis();
-  initLog();
-  setStatus('Ready — add your first profile on the Profiles tab');
+// ── Init ──────────────────────────────────────────────────
+(function init(){
+  const removed=DataStore.purgeOld();
+  if(removed)setStatus(`Startup: removed ${removed} old log entries`);
+  startClock();initTabs();initHint();initProfiles();
+  initLatency();initDashboard();initCollection();initAnalysis();initLog();
+  setStatus('Ready — load a profile to begin');
 })();
 </script>
 </body>
